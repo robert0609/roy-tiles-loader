@@ -1,4 +1,5 @@
 import { TilesLoader } from '../index';
+import { loadImage } from '../utils/img';
 
 (async function () {
   const canvasElement = document.getElementById(
@@ -7,13 +8,14 @@ import { TilesLoader } from '../index';
 
   const context = canvasElement.getContext('2d')!;
 
+  const unitsPerPixel = 4;
   const mtx: [number, number, number, number, number, number] = [
-    1 / 3,
+    1 / unitsPerPixel,
     0,
     0,
-    1 / 3,
-    -200,
-    -200
+    1 / unitsPerPixel,
+    0,
+    0
   ];
 
   context.setTransform(...mtx);
@@ -33,10 +35,14 @@ import { TilesLoader } from '../index';
       { unitsPerPixel: 32, tileZ: 1 },
       { unitsPerPixel: 64, tileZ: 0 }
     ],
-    canvasElement
+    canvasElement,
+    async loadTileImageHook(imgUrl: string) {
+      return await loadImage(imgUrl);
+    }
   });
 
   loader.render();
+  const lastZoom = 1 / unitsPerPixel;
 
   // const invertMatrix1 = context.getTransform().invertSelf();
 
@@ -52,5 +58,17 @@ import { TilesLoader } from '../index';
   // context.fill();
 
   // @ts-ignore
-  window.debugContext = context;
+  window.render = (unitsPerPixel: number) => {
+    const mtx: [number, number, number, number, number, number] = [
+      1 / unitsPerPixel,
+      0,
+      0,
+      1 / unitsPerPixel,
+      0,
+      0
+    ];
+
+    context.setTransform(...mtx);
+    loader.render();
+  };
 })();
