@@ -6,3 +6,4 @@ dist-ssr
 .history
 stats.html
 package-lock.json
+src/demo/tiles
