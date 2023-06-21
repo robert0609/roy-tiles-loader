@@ -66,7 +66,7 @@ export class TilesLoader {
 
   // 根据当前zoom确定所要使用的瓦片数据集
   private checkTileSet(zoom: number) {
-    const currentUnitsPerPixel = Math.round(1 / zoom);
+    const currentUnitsPerPixel = 1 / zoom;
     let newTileSet: ITile | undefined;
     for (let i = 0; i < this._tileSet.length; ++i) {
       if (this._tileSet[i].unitsPerPixel <= currentUnitsPerPixel) {
