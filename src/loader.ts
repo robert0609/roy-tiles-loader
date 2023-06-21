@@ -116,42 +116,6 @@ export class TilesLoader {
     return { xTilesCount, yTilesCount };
   }
 
-  // 根据缩放级别返回每一级的瓦片纵向或者横向的数量
-  private getTilesCountByZoom(zoom: number) {
-    const currentUnitsPerPixel = Math.round(1 / zoom);
-    let tile: ITile | undefined;
-    for (let i = 0; i < this._tileSet.length; ++i) {
-      if (this._tileSet[i].unitsPerPixel <= currentUnitsPerPixel) {
-        tile = this._tileSet[i];
-      } else {
-        break;
-      }
-    }
-    if (!tile) {
-      return;
-    }
-
-    // 计算这一级瓦片数据集，纵横的最大瓦片数量
-    const maxTilesCount = Math.pow(2, tile.tileZ);
-    const xTilesCount = Math.min(
-      Math.ceil(
-        this.options.originalImageWidth /
-          tile.unitsPerPixel /
-          this.options.tileWidth
-      ),
-      maxTilesCount
-    );
-    const yTilesCount = Math.min(
-      Math.ceil(
-        this.options.originalImageHeight /
-          tile.unitsPerPixel /
-          this.options.tileHeight
-      ),
-      maxTilesCount
-    );
-    return { xTilesCount, yTilesCount, tileZ: tile.tileZ };
-  }
-
   private onTileSetChanged() {
     // 如果当前使用的数据集存在的话
     if (!!this._currentTileSet) {
@@ -175,12 +139,17 @@ export class TilesLoader {
   async render() {
     // 获取当前画布的变换矩阵
     const transformMatrix = this._context.getTransform();
+    // 找到当前可视范围的区域
+    const { tlPointView, brPointView } = this.getViewportArea();
     // 获取缩放级别
     const zoom = transformMatrix.a;
     // 判断是否使用的瓦片数据集发生了变化
     const tileSetIsChanged = this.checkTileSet(zoom);
     if (tileSetIsChanged) {
       this.onTileSetChanged();
+      // TODO:使用的瓦片集发生变化的时候，不须diff，重新渲染整个可视范围内的瓦片底图
+    } else {
+      // TODO:未发生变化的时候，只需要diff不同的部分渲染即可
     }
 
     // 如果没有找到当前缩放级别所对应的瓦片数量，则该情况是没有生成对应这一级别的栅格瓦片，就不渲染
@@ -198,25 +167,51 @@ export class TilesLoader {
       x: this._fullImageWidth,
       y: this._fullImageHeight
     };
-    // 找到当前可视范围的区域
-    const { tlPoint, brPoint } = this.getViewportArea();
     // 查找重合部分，即为当前需要渲染的底图区域
     const tl = {
-      x: Math.max(tlPointReal.x, tlPoint.x),
-      y: Math.max(tlPointReal.y, tlPoint.y)
+      x: Math.max(tlPointReal.x, tlPointView.x),
+      y: Math.max(tlPointReal.y, tlPointView.y)
     };
     const br = {
-      x: Math.min(brPointReal.x, brPoint.x),
-      y: Math.min(brPointReal.y, brPoint.y)
+      x: Math.min(brPointReal.x, brPointView.x),
+      y: Math.min(brPointReal.y, brPointView.y)
     };
-    // 清除这个范围内的底图
-    this._context.clearRect(
-      tlPoint.x,
-      tlPoint.y,
-      brPoint.x - tlPoint.x,
-      brPoint.y - tlPoint.y
-    );
     if (tl.x < br.x && tl.y < br.y) {
+      // 该分支是有重合部分的情况，即需要刷新渲染瓦片而不是清除画布
+      // 因为存在瓦片底图与可视窗口部分重合的情况，因此需要清除在可视窗口内但不属于瓦片底图的那部分画布
+      if (tlPointView.x < tl.x) {
+        this._context.clearRect(
+          tlPointView.x,
+          tlPointView.y,
+          tl.x - tlPointView.x,
+          brPointView.y - tlPointView.y
+        );
+      }
+      if (tlPointView.y < tl.y) {
+        this._context.clearRect(
+          tlPointView.x,
+          tlPointView.y,
+          brPointView.x - tlPointView.x,
+          tl.y - tlPointView.y
+        );
+      }
+      if (brPointView.x > br.x) {
+        this._context.clearRect(
+          br.x,
+          tlPointView.y,
+          brPointView.x - br.x,
+          brPointView.y - tlPointView.y
+        );
+      }
+      if (brPointView.y > br.y) {
+        this._context.clearRect(
+          tlPointView.x,
+          br.y,
+          brPointView.x - tlPointView.x,
+          brPointView.y - br.y
+        );
+      }
+
       // 此时会重新渲染这个范围的底图，需要加载这个范围内的瓦片
       const xStart = Math.floor(tl.x / this.options.tileWidth);
       let xEnd = Math.floor(br.x / this.options.tileWidth);
@@ -240,6 +235,12 @@ export class TilesLoader {
       await Promise.all(imgLoadPromises);
     } else {
       // 此时不渲染任何瓦片
+      this._context.clearRect(
+        tlPointView.x,
+        tlPointView.y,
+        brPointView.x - tlPointView.x,
+        brPointView.y - tlPointView.y
+      );
       return;
     }
   }
@@ -268,13 +269,13 @@ export class TilesLoader {
     // 求逆矩阵
     const invertTransformMatrix = transformMatrix.invertSelf();
 
-    const tlPoint = invertTransformMatrix.transformPoint({ x: 0, y: 0 });
-    const brPoint = invertTransformMatrix.transformPoint({
+    const tlPointView = invertTransformMatrix.transformPoint({ x: 0, y: 0 });
+    const brPointView = invertTransformMatrix.transformPoint({
       x: this.viewportWidth,
       y: this.viewportHeight
     });
 
     // 返回左上和右下两个点坐标
-    return { tlPoint, brPoint };
+    return { tlPointView, brPointView };
   }
 }
