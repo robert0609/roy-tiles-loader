@@ -30,7 +30,9 @@ export interface ITilesLoaderOption {
 
 export class TilesLoader {
   private _canvas: HTMLCanvasElement;
+  private _cacheCanvas: HTMLCanvasElement;
   private _context: CanvasRenderingContext2D;
+  private _cacheContext: CanvasRenderingContext2D;
   private _tileSet: ITile[];
   // 当前使用的瓦片数据集
   private _currentTileSet?: ITile;
@@ -65,10 +67,21 @@ export class TilesLoader {
       (a, b) => a.unitsPerPixel - b.unitsPerPixel
     );
     this._context = this._canvas.getContext('2d')!;
+
+    // 为解决绘制闪屏，创建离屏canvas
+    this._cacheCanvas = document.createElement('canvas');
+    this._cacheCanvas.width = this.viewportWidth;
+    this._cacheCanvas.height = this.viewportHeight;
+    this._cacheContext = this._cacheCanvas.getContext('2d')!;
   }
 
   setZoom(zoom: number) {
     this._zoom = zoom;
+    // 判断是否使用的瓦片数据集发生了变化
+    const tileSetIsChanged = this.checkTileSet(zoom);
+    if (tileSetIsChanged) {
+      this.onTileSetChanged();
+    }
   }
 
   // 根据当前zoom确定所要使用的瓦片数据集
@@ -148,16 +161,11 @@ export class TilesLoader {
   async render() {
     // 获取当前设置的缩放级别
     const zoom = this._zoom;
-    // 判断是否使用的瓦片数据集发生了变化
-    const tileSetIsChanged = this.checkTileSet(zoom);
-    if (tileSetIsChanged) {
-      this.onTileSetChanged();
-    }
     if (!!this._currentTileSet) {
       // 将画布使用单位像素比做一下校准变换
-      const mtx = this._context.getTransform();
+      const mtx = this._cacheContext.getTransform();
       mtx.a = mtx.d = this._currentTileSet.unitsPerPixel * this._zoom;
-      this._context.setTransform(mtx);
+      this._cacheContext.setTransform(mtx);
     }
 
     // 如果没有找到当前缩放级别所对应的瓦片数量，则该情况是没有生成对应这一级别的栅格瓦片，就不渲染
@@ -190,7 +198,7 @@ export class TilesLoader {
       // 该分支是有重合部分的情况，即需要刷新渲染瓦片而不是清除画布
       // 因为存在瓦片底图与可视窗口部分重合的情况，因此需要清除在可视窗口内但不属于瓦片底图的那部分画布
       if (tlPointView.x < tl.x) {
-        this._context.clearRect(
+        this._cacheContext.clearRect(
           tlPointView.x,
           tlPointView.y,
           tl.x - tlPointView.x,
@@ -198,7 +206,7 @@ export class TilesLoader {
         );
       }
       if (tlPointView.y < tl.y) {
-        this._context.clearRect(
+        this._cacheContext.clearRect(
           tlPointView.x,
           tlPointView.y,
           brPointView.x - tlPointView.x,
@@ -206,7 +214,7 @@ export class TilesLoader {
         );
       }
       if (brPointView.x > br.x - this.options.tileWidth) {
-        this._context.clearRect(
+        this._cacheContext.clearRect(
           br.x - this.options.tileWidth,
           tlPointView.y,
           brPointView.x - br.x + this.options.tileWidth,
@@ -214,7 +222,7 @@ export class TilesLoader {
         );
       }
       if (brPointView.y > br.y - this.options.tileHeight) {
-        this._context.clearRect(
+        this._cacheContext.clearRect(
           tlPointView.x,
           br.y - this.options.tileHeight,
           brPointView.x - tlPointView.x,
@@ -245,14 +253,17 @@ export class TilesLoader {
       await Promise.all(imgLoadPromises);
     } else {
       // 此时不渲染任何瓦片
-      this._context.clearRect(
+      this._cacheContext.clearRect(
         tlPointView.x,
         tlPointView.y,
         brPointView.x - tlPointView.x,
         brPointView.y - tlPointView.y
       );
-      return;
     }
+
+    // 将离屏canvas渲染到展示的canvas上
+    this._context.clearRect(0, 0, this.viewportWidth, this.viewportHeight);
+    this._context.drawImage(this._cacheCanvas, 0, 0);
   }
 
   private async drawTile(z: number, x: number, y: number) {
@@ -266,7 +277,7 @@ export class TilesLoader {
     } else {
       img = await loadImage(imgUrl);
     }
-    this._context.drawImage(
+    this._cacheContext.drawImage(
       img,
       x * this.options.tileWidth,
       y * this.options.tileHeight
@@ -275,7 +286,7 @@ export class TilesLoader {
 
   private getViewportArea() {
     // 获取当前画布的变换矩阵
-    const transformMatrix = this._context.getTransform();
+    const transformMatrix = this._cacheContext.getTransform();
     // 求逆矩阵
     const invertTransformMatrix = transformMatrix.invertSelf();
 
