@@ -42,6 +42,9 @@ export class TilesLoader {
   private _fullImageWidth = 0;
   private _fullImageHeight = 0;
 
+  // 当前瓦片底图的缩放级别，默认是1，表示无缩放变换
+  private _zoom = 1;
+
   /**
    * 可视范围宽度
    */
@@ -62,6 +65,10 @@ export class TilesLoader {
       (a, b) => a.unitsPerPixel - b.unitsPerPixel
     );
     this._context = this._canvas.getContext('2d')!;
+  }
+
+  setZoom(zoom: number) {
+    this._zoom = zoom;
   }
 
   // 根据当前zoom确定所要使用的瓦片数据集
@@ -127,6 +134,8 @@ export class TilesLoader {
 
       this._fullImageWidth = this.options.tileWidth * this._xTilesCount;
       this._fullImageHeight = this.options.tileHeight * this._yTilesCount;
+
+      console.log('switch to new tileSet, tileZ: ', this._currentTileSet.tileZ);
     } else {
       this._xTilesCount = 0;
       this._yTilesCount = 0;
@@ -137,19 +146,18 @@ export class TilesLoader {
   }
 
   async render() {
-    // 获取当前画布的变换矩阵
-    const transformMatrix = this._context.getTransform();
-    // 找到当前可视范围的区域
-    const { tlPointView, brPointView } = this.getViewportArea();
-    // 获取缩放级别
-    const zoom = transformMatrix.a;
+    // 获取当前设置的缩放级别
+    const zoom = this._zoom;
     // 判断是否使用的瓦片数据集发生了变化
     const tileSetIsChanged = this.checkTileSet(zoom);
     if (tileSetIsChanged) {
       this.onTileSetChanged();
-      // TODO:使用的瓦片集发生变化的时候，不须diff，重新渲染整个可视范围内的瓦片底图
-    } else {
-      // TODO:未发生变化的时候，只需要diff不同的部分渲染即可
+    }
+    if (!!this._currentTileSet) {
+      // 将画布使用单位像素比做一下校准变换
+      const mtx = this._context.getTransform();
+      mtx.a = mtx.d = this._currentTileSet.unitsPerPixel * this._zoom;
+      this._context.setTransform(mtx);
     }
 
     // 如果没有找到当前缩放级别所对应的瓦片数量，则该情况是没有生成对应这一级别的栅格瓦片，就不渲染
@@ -161,6 +169,8 @@ export class TilesLoader {
       console.warn(`The tiles for zoom[${zoom}] are not found!`);
       return;
     }
+    // 找到当前可视范围的区域
+    const { tlPointView, brPointView } = this.getViewportArea();
     // 真实的底图的整体尺寸，是按照栅格瓦片的数量来计算的，不是实际底图的尺寸
     const tlPointReal = { x: 0, y: 0 };
     const brPointReal = {
@@ -197,18 +207,18 @@ export class TilesLoader {
       }
       if (brPointView.x > br.x) {
         this._context.clearRect(
-          br.x,
+          br.x - this.options.tileWidth,
           tlPointView.y,
-          brPointView.x - br.x,
+          brPointView.x - br.x + this.options.tileWidth,
           brPointView.y - tlPointView.y
         );
       }
       if (brPointView.y > br.y) {
         this._context.clearRect(
           tlPointView.x,
-          br.y,
+          br.y - this.options.tileHeight,
           brPointView.x - tlPointView.x,
-          brPointView.y - br.y
+          brPointView.y - br.y + this.options.tileHeight
         );
       }
 

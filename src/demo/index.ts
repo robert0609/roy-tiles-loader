@@ -9,18 +9,6 @@ import bgImgUrl from './bg.jpg';
 
   const context = canvasElement.getContext('2d')!;
 
-  let unitsPerPixel = 4;
-  const mtx: [number, number, number, number, number, number] = [
-    1 / unitsPerPixel,
-    0,
-    0,
-    1 / unitsPerPixel,
-    0,
-    0
-  ];
-
-  context.setTransform(...mtx);
-
   const loader = new TilesLoader({
     tileWidth: 256,
     tileHeight: 256,
@@ -42,33 +30,24 @@ import bgImgUrl from './bg.jpg';
     }
   });
 
+  let zoom = 1 / 8;
+  loader.setZoom(zoom);
   loader.render();
-  const lastZoom = 1 / unitsPerPixel;
 
   // @ts-ignore
-  window.render = (unitsPerPixel: number) => {
-    const mtx: [number, number, number, number, number, number] = [
-      1 / unitsPerPixel,
-      0,
-      0,
-      1 / unitsPerPixel,
-      0,
-      0
-    ];
-
-    context.setTransform(...mtx);
+  window.render = (zoom: number) => {
+    loader.setZoom(zoom);
     loader.render();
   };
 
   document.addEventListener('keyup', (e) => {
     if (e.key === 'ArrowUp') {
-      unitsPerPixel += 0.1;
+      zoom += 0.005;
     } else if (e.key === 'ArrowDown') {
-      unitsPerPixel -= 0.1;
+      zoom -= 0.005;
     }
-    console.log('@@@ unitsPerPixel:', unitsPerPixel);
-    // @ts-ignore
-    window.render(unitsPerPixel);
+    loader.setZoom(zoom);
+    loader.render();
   });
 })();
 
