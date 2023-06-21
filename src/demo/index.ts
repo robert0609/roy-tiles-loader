@@ -30,7 +30,7 @@ import bgImgUrl from './bg.jpg';
     }
   });
 
-  let zoom = 1 / 8;
+  const zoom = 1 / 8;
   loader.setZoom(zoom);
   loader.render();
 
@@ -40,13 +40,21 @@ import bgImgUrl from './bg.jpg';
     loader.render();
   };
 
+  let tranX = 0;
+  let tranY = 0;
+
   document.addEventListener('keyup', (e) => {
     if (e.key === 'ArrowUp') {
-      zoom += 0.005;
+      tranY += 10;
     } else if (e.key === 'ArrowDown') {
-      zoom -= 0.005;
+      tranY -= 10;
+    } else if (e.key === 'ArrowLeft') {
+      tranX += 10;
+    } else if (e.key === 'ArrowRight') {
+      tranX -= 10;
     }
     loader.setZoom(zoom);
+    loader.setTranslation(tranX, tranY);
     loader.render();
   });
 })();

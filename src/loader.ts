@@ -84,6 +84,13 @@ export class TilesLoader {
     }
   }
 
+  setTranslation(x: number, y: number) {
+    const mtx = this._cacheContext.getTransform();
+    mtx.e = x;
+    mtx.f = y;
+    this._cacheContext.setTransform(mtx);
+  }
+
   // 根据当前zoom确定所要使用的瓦片数据集
   private checkTileSet(zoom: number) {
     const currentUnitsPerPixel = 1 / zoom;
