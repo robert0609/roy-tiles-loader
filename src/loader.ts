@@ -205,7 +205,7 @@ export class TilesLoader {
           tl.y - tlPointView.y
         );
       }
-      if (brPointView.x > br.x) {
+      if (brPointView.x > br.x - this.options.tileWidth) {
         this._context.clearRect(
           br.x - this.options.tileWidth,
           tlPointView.y,
@@ -213,7 +213,7 @@ export class TilesLoader {
           brPointView.y - tlPointView.y
         );
       }
-      if (brPointView.y > br.y) {
+      if (brPointView.y > br.y - this.options.tileHeight) {
         this._context.clearRect(
           tlPointView.x,
           br.y - this.options.tileHeight,
