@@ -16,7 +16,7 @@ import bgImgUrl from './bg.jpg';
     tileUrlPattern: './src/demo/tiles/{z}/{x}/{y}.png',
     canvasElement,
     async loadTileImageHook(imgUrl: string) {
-      return await loadImage(imgUrl);
+      return (await loadImage(imgUrl))[0];
     }
   });
 
@@ -49,9 +49,9 @@ import bgImgUrl from './bg.jpg';
 
   document.addEventListener('keyup', (e) => {
     if (e.key === 'ArrowUp') {
-      zoom += 0.001;
+      zoom += 0.01;
     } else if (e.key === 'ArrowDown') {
-      zoom -= 0.001;
+      zoom -= 0.01;
     }
     loader.setZoom(zoom);
     loader.render();

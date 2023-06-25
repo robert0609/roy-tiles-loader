@@ -282,7 +282,7 @@ export class TilesLoader {
     if (this.options.loadTileImageHook !== undefined) {
       img = await this.options.loadTileImageHook(imgUrl);
     } else {
-      img = await loadImage(imgUrl);
+      img = (await loadImage(imgUrl))[0];
     }
     this._cacheContext.drawImage(
       img,
