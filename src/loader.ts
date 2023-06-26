@@ -77,7 +77,6 @@ export class TilesLoader {
 
   setZoom(zoom: number) {
     this._zoom = zoom;
-    console.log('set zoom: ', zoom);
     // 判断是否使用的瓦片数据集发生了变化
     const tileSetIsChanged = this.checkTileSet(zoom);
     if (tileSetIsChanged) {
@@ -162,7 +161,7 @@ export class TilesLoader {
       this._fullImageWidth = this.options.tileWidth * this._xTilesCount;
       this._fullImageHeight = this.options.tileHeight * this._yTilesCount;
 
-      console.log('switch to new tileSet, tileZ: ', this._currentTileSet.tileZ);
+      // console.log('switch to new tileSet, tileZ: ', this._currentTileSet.tileZ);
     } else {
       this._xTilesCount = 0;
       this._yTilesCount = 0;
