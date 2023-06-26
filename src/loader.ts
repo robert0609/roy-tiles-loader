@@ -295,6 +295,9 @@ export class TilesLoader {
         `Failed to draw tile: getTileUrlHook or tileUrlPattern must be set one at least!`
       );
     }
+    if (!imgUrl) {
+      throw new Error(`Failed to draw tile: tile img url is empty!`);
+    }
     const img = (await loadImage([imgUrl], this.options.loadTileImageHook))[0];
     this._cacheContext.drawImage(
       img,
