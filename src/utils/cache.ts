@@ -9,7 +9,7 @@ export class CacheQueue<D = string> {
   constructor(private readonly maxCount: number = 200) {}
 
   setData(key: string, data: D) {
-    if (this._store[key] !== undefined) {
+    if (this._store[key] === undefined) {
       this._keys.push(key);
     } else {
       console.warn(

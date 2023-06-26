@@ -77,6 +77,7 @@ export class TilesLoader {
 
   setZoom(zoom: number) {
     this._zoom = zoom;
+    console.log('set zoom: ', zoom);
     // 判断是否使用的瓦片数据集发生了变化
     const tileSetIsChanged = this.checkTileSet(zoom);
     if (tileSetIsChanged) {
@@ -113,6 +114,12 @@ export class TilesLoader {
       if (this._currentTileSet.tileZ !== newTileSet.tileZ) {
         tileSetIsChanged = true;
       }
+    }
+
+    // 如果经过判断，没有找到合适的新瓦片数据集，那么仍然沿用之前的数据集
+    if (!newTileSet) {
+      newTileSet = this._currentTileSet;
+      tileSetIsChanged = false;
     }
 
     this._currentTileSet = newTileSet;

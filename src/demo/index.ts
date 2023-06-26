@@ -20,7 +20,7 @@ import bgImgUrl from './bg.jpg';
     }
   });
 
-  let zoom = 1 / 8;
+  let zoom = 1 / 64;
   loader.setZoom(zoom);
   loader.render();
 
@@ -49,9 +49,9 @@ import bgImgUrl from './bg.jpg';
 
   document.addEventListener('keyup', (e) => {
     if (e.key === 'ArrowUp') {
-      zoom += 0.01;
+      zoom += 0.001;
     } else if (e.key === 'ArrowDown') {
-      zoom -= 0.01;
+      zoom -= 0.001;
     }
     loader.setZoom(zoom);
     loader.render();
