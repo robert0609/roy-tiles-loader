@@ -9,7 +9,7 @@ export interface ITilesConfigOption {
 
 export type SimpleTilesLoaderOption = Pick<
   ITilesLoaderOption,
-  'tileUrlPattern' | 'canvasElement' | 'loadTileImageHook'
+  'tileUrlPattern' | 'getTileUrlHook' | 'canvasElement' | 'loadTileImageHook'
 > &
   ITilesConfigOption;
 
@@ -31,6 +31,7 @@ export async function getTilesLoaderByXmlConfig(
   const loader = await new TilesLoader({
     ...tilesConfig,
     tileUrlPattern: options.tileUrlPattern,
+    getTileUrlHook: options.getTileUrlHook,
     canvasElement: options.canvasElement,
     loadTileImageHook: options.loadTileImageHook
   });
