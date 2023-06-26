@@ -16,7 +16,7 @@ import bgImgUrl from './bg.jpg';
     tileUrlPattern: './src/demo/tiles/{z}/{x}/{y}.png',
     canvasElement,
     async loadTileImageHook(imgUrl: string) {
-      return (await loadImage(imgUrl))[0];
+      return (await loadImage([imgUrl]))[0];
     }
   });
 

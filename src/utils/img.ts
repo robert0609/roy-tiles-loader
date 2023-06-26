@@ -23,8 +23,15 @@ const imageLoadFromCloudPromiseMap: Record<
   Promise<HTMLImageElement>
 > = {};
 
-export async function loadImage(...urls: string[]) {
+export async function loadImage(
+  urls: string[],
+  loadImageFromCloudCallback?: (url: string) => Promise<HTMLImageElement>
+) {
   const loadResultPromises: Promise<HTMLImageElement>[] = [];
+
+  if (!loadImageFromCloudCallback) {
+    loadImageFromCloudCallback = loadImageFromCloud;
+  }
 
   for (const url of urls) {
     const localImage = imageCacheQueue.getData(url);
@@ -32,7 +39,7 @@ export async function loadImage(...urls: string[]) {
       if (!imageLoadFromCloudPromiseMap[url]) {
         // 建立从云端加载图片的任务
         const loadTask = (async () => {
-          const img = await loadImageFromCloud(url);
+          const img = await loadImageFromCloudCallback(url);
           imageCacheQueue.setData(url, img);
           // 执行完之后，将自己从队列中移除
           delete imageLoadFromCloudPromiseMap[url];

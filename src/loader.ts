@@ -19,7 +19,9 @@ export interface ITilesLoaderOption {
   // 原始底图的高度
   originalImageHeight: number;
   // 栅格瓦片url的格式，形如：https://img.xxx.com/xxxx/xxxx/{z}/{x}/{y}.png
-  tileUrlPattern: string;
+  tileUrlPattern?: string;
+  // 生成瓦片url的钩子方法,tileUrlPattern和getTileUrlHook必须至少设置一个
+  getTileUrlHook?: (z: number, x: number, y: number) => string;
   // 栅格瓦片数据集
   tileSet: ITile[];
   // 渲染目标画布
@@ -280,16 +282,20 @@ export class TilesLoader {
   }
 
   private async drawTile(z: number, x: number, y: number) {
-    const imgUrl = this.options.tileUrlPattern
-      .replace('{z}', z.toString())
-      .replace('{x}', x.toString())
-      .replace('{y}', y.toString());
-    let img: HTMLImageElement;
-    if (this.options.loadTileImageHook !== undefined) {
-      img = await this.options.loadTileImageHook(imgUrl);
+    let imgUrl: string;
+    if (!!this.options.getTileUrlHook) {
+      imgUrl = this.options.getTileUrlHook(z, x, y);
+    } else if (!!this.options.tileUrlPattern) {
+      imgUrl = this.options.tileUrlPattern
+        .replace('{z}', z.toString())
+        .replace('{x}', x.toString())
+        .replace('{y}', y.toString());
     } else {
-      img = (await loadImage(imgUrl))[0];
+      throw new Error(
+        `Failed to draw tile: getTileUrlHook or tileUrlPattern must be set one at least!`
+      );
     }
+    const img = (await loadImage([imgUrl], this.options.loadTileImageHook))[0];
     this._cacheContext.drawImage(
       img,
       x * this.options.tileWidth,
