@@ -1,41 +1,9 @@
+import { ITile, ITilesLoaderOption } from './loader';
 import { loadImage } from './utils/img';
 import { fabric } from 'fabric';
 
-export interface ITile {
-  // 当前瓦片一个像素代表原图多少个像素的比值
-  unitsPerPixel: number;
-  // 当前瓦片的z级别，z级别越大，代表放大倍数越大，显示越精细
-  tileZ: number;
-}
-
-export type LoadTileImage = (imgUrl: string) => Promise<HTMLImageElement>;
-
-export interface ITilesLoaderOption {
-  // 瓦片宽度
-  tileWidth: number;
-  // 瓦片高度
-  tileHeight: number;
-  // 原始底图的宽度
-  originalImageWidth: number;
-  // 原始底图的高度
-  originalImageHeight: number;
-  // 栅格瓦片url的格式，形如：https://img.xxx.com/xxxx/xxxx/{z}/{x}/{y}.png
-  tileUrlPattern?: string;
-  // 生成瓦片url的钩子方法,tileUrlPattern和getTileUrlHook必须至少设置一个
-  getTileUrlHook?: (z: number, x: number, y: number) => string;
-  // 栅格瓦片数据集
-  tileSet: ITile[];
-  // 渲染目标画布
-  canvasElement: HTMLCanvasElement | fabric.StaticCanvas;
-  // 加载栅格瓦片的钩子，如果设置了，会取代默认的加载图片的方法
-  loadTileImageHook?: LoadTileImage;
-}
-
-export class TilesLoader {
-  private _canvas: HTMLCanvasElement;
-  private _cacheCanvas: HTMLCanvasElement;
-  private _context: CanvasRenderingContext2D;
-  private _cacheContext: CanvasRenderingContext2D;
+export class FabricTilesLoader {
+  private _canvas: fabric.StaticCanvas;
   private _tileSet: ITile[];
   // 当前使用的瓦片数据集
   private _currentTileSet?: ITile;
@@ -54,28 +22,21 @@ export class TilesLoader {
    * 可视范围宽度
    */
   get viewportWidth() {
-    return this._canvas.width;
+    return this._canvas.getWidth();
   }
 
   /**
    * 可视范围高度
    */
   get viewportHeight() {
-    return this._canvas.height;
+    return this._canvas.getHeight();
   }
 
   constructor(private options: ITilesLoaderOption) {
-    this._canvas = options.canvasElement as HTMLCanvasElement;
+    this._canvas = options.canvasElement as fabric.StaticCanvas;
     this._tileSet = [...this.options.tileSet].sort(
       (a, b) => a.unitsPerPixel - b.unitsPerPixel
     );
-    this._context = this._canvas.getContext('2d')!;
-
-    // 为解决绘制闪屏，创建离屏canvas
-    this._cacheCanvas = document.createElement('canvas');
-    this._cacheCanvas.width = this.viewportWidth;
-    this._cacheCanvas.height = this.viewportHeight;
-    this._cacheContext = this._cacheCanvas.getContext('2d')!;
   }
 
   setZoom(zoom: number) {
@@ -88,10 +49,10 @@ export class TilesLoader {
   }
 
   setTranslation(x: number, y: number) {
-    const mtx = this._cacheContext.getTransform();
-    mtx.e = x;
-    mtx.f = y;
-    this._cacheContext.setTransform(mtx);
+    const mtx = this._canvas.viewportTransform!;
+    mtx[4] = x;
+    mtx[5] = y;
+    this._canvas.setViewportTransform(mtx);
   }
 
   // 根据当前zoom确定所要使用的瓦片数据集
@@ -179,9 +140,9 @@ export class TilesLoader {
     const zoom = this._zoom;
     if (!!this._currentTileSet) {
       // 将画布使用单位像素比做一下校准变换
-      const mtx = this._cacheContext.getTransform();
-      mtx.a = mtx.d = this._currentTileSet.unitsPerPixel * this._zoom;
-      this._cacheContext.setTransform(mtx);
+      const mtx = this._canvas.viewportTransform!;
+      mtx[0] = mtx[3] = this._currentTileSet.unitsPerPixel * this._zoom;
+      this._canvas.setViewportTransform(mtx);
     }
 
     // 如果没有找到当前缩放级别所对应的瓦片数量，则该情况是没有生成对应这一级别的栅格瓦片，就不渲染
@@ -211,40 +172,40 @@ export class TilesLoader {
       y: Math.min(brPointReal.y, brPointView.y)
     };
     if (tl.x < br.x && tl.y < br.y) {
-      // 该分支是有重合部分的情况，即需要刷新渲染瓦片而不是清除画布
-      // 因为存在瓦片底图与可视窗口部分重合的情况，因此需要清除在可视窗口内但不属于瓦片底图的那部分画布
-      if (tlPointView.x < tl.x) {
-        this._cacheContext.clearRect(
-          tlPointView.x,
-          tlPointView.y,
-          tl.x - tlPointView.x,
-          brPointView.y - tlPointView.y
-        );
-      }
-      if (tlPointView.y < tl.y) {
-        this._cacheContext.clearRect(
-          tlPointView.x,
-          tlPointView.y,
-          brPointView.x - tlPointView.x,
-          tl.y - tlPointView.y
-        );
-      }
-      if (brPointView.x > br.x - this.options.tileWidth) {
-        this._cacheContext.clearRect(
-          br.x - this.options.tileWidth,
-          tlPointView.y,
-          brPointView.x - br.x + this.options.tileWidth,
-          brPointView.y - tlPointView.y
-        );
-      }
-      if (brPointView.y > br.y - this.options.tileHeight) {
-        this._cacheContext.clearRect(
-          tlPointView.x,
-          br.y - this.options.tileHeight,
-          brPointView.x - tlPointView.x,
-          brPointView.y - br.y + this.options.tileHeight
-        );
-      }
+      // // 该分支是有重合部分的情况，即需要刷新渲染瓦片而不是清除画布
+      // // 因为存在瓦片底图与可视窗口部分重合的情况，因此需要清除在可视窗口内但不属于瓦片底图的那部分画布
+      // if (tlPointView.x < tl.x) {
+      //   this._cacheContext.clearRect(
+      //     tlPointView.x,
+      //     tlPointView.y,
+      //     tl.x - tlPointView.x,
+      //     brPointView.y - tlPointView.y
+      //   );
+      // }
+      // if (tlPointView.y < tl.y) {
+      //   this._cacheContext.clearRect(
+      //     tlPointView.x,
+      //     tlPointView.y,
+      //     brPointView.x - tlPointView.x,
+      //     tl.y - tlPointView.y
+      //   );
+      // }
+      // if (brPointView.x > br.x - this.options.tileWidth) {
+      //   this._cacheContext.clearRect(
+      //     br.x - this.options.tileWidth,
+      //     tlPointView.y,
+      //     brPointView.x - br.x + this.options.tileWidth,
+      //     brPointView.y - tlPointView.y
+      //   );
+      // }
+      // if (brPointView.y > br.y - this.options.tileHeight) {
+      //   this._cacheContext.clearRect(
+      //     tlPointView.x,
+      //     br.y - this.options.tileHeight,
+      //     brPointView.x - tlPointView.x,
+      //     brPointView.y - br.y + this.options.tileHeight
+      //   );
+      // }
 
       // 此时会重新渲染这个范围的底图，需要加载这个范围内的瓦片
       const xStart = Math.floor(tl.x / this.options.tileWidth);
@@ -259,27 +220,22 @@ export class TilesLoader {
       }
 
       // 根据找到的x和y方向上的索引范围，找到所需要加载的瓦片地址
-      const imgLoadPromises: Promise<void>[] = [];
+      const imgLoadPromises: Promise<fabric.Image>[] = [];
       for (let x = xStart; x <= xEnd; ++x) {
         for (let y = yStart; y <= yEnd; ++y) {
           imgLoadPromises.push(this.drawTile(this._currentTileSet.tileZ, x, y));
         }
       }
 
-      await Promise.all(imgLoadPromises);
+      const imgs = await Promise.all(imgLoadPromises);
+      this._canvas.clear();
+      for (const img of imgs) {
+        this._canvas.add(img);
+      }
     } else {
       // 此时不渲染任何瓦片
-      this._cacheContext.clearRect(
-        tlPointView.x,
-        tlPointView.y,
-        brPointView.x - tlPointView.x,
-        brPointView.y - tlPointView.y
-      );
+      this._canvas.clear();
     }
-
-    // 将离屏canvas渲染到展示的canvas上
-    this._context.clearRect(0, 0, this.viewportWidth, this.viewportHeight);
-    this._context.drawImage(this._cacheCanvas, 0, 0);
   }
 
   private async drawTile(z: number, x: number, y: number) {
@@ -300,26 +256,16 @@ export class TilesLoader {
       throw new Error(`Failed to draw tile: tile img url is empty!`);
     }
     const img = (await loadImage([imgUrl], this.options.loadTileImageHook))[0];
-    this._cacheContext.drawImage(
-      img,
-      x * this.options.tileWidth,
-      y * this.options.tileHeight
-    );
+    return new fabric.Image(img, {
+      selectable: false,
+      left: x * this.options.tileWidth,
+      top: y * this.options.tileHeight
+    });
   }
 
   private getViewportArea() {
-    // 获取当前画布的变换矩阵
-    const transformMatrix = this._cacheContext.getTransform();
-    // 求逆矩阵
-    const invertTransformMatrix = transformMatrix.invertSelf();
-
-    const tlPointView = invertTransformMatrix.transformPoint({ x: 0, y: 0 });
-    const brPointView = invertTransformMatrix.transformPoint({
-      x: this.viewportWidth,
-      y: this.viewportHeight
-    });
-
+    const coords = this._canvas.vptCoords!;
     // 返回左上和右下两个点坐标
-    return { tlPointView, brPointView };
+    return { tlPointView: coords.tl, brPointView: coords.br };
   }
 }

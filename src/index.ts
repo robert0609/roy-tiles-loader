@@ -1,10 +1,15 @@
 import { TilesLoader } from './loader';
 import { getConfig } from './config';
 import type { ITilesLoaderOption } from './loader';
+import { type } from 'os';
+import { FabricTilesLoader } from './fabricLoader';
+
+export type CanvasType = 'raw' | 'fabric';
 
 export interface ITilesConfigOption {
   // 瓦片xml配置文件的url
   tilesConfigUrl: string;
+  canvasType: CanvasType;
 }
 
 export type SimpleTilesLoaderOption = Pick<
@@ -28,14 +33,25 @@ export async function getTilesLoaderByXmlConfig(
   options: SimpleTilesLoaderOption
 ) {
   const tilesConfig = await getTilesConfig(options);
-  const loader = await new TilesLoader({
-    ...tilesConfig,
-    tileUrlPattern: options.tileUrlPattern,
-    getTileUrlHook: options.getTileUrlHook,
-    canvasElement: options.canvasElement,
-    loadTileImageHook: options.loadTileImageHook
-  });
-  return loader;
+  if (options.canvasType === 'fabric') {
+    const loader = await new FabricTilesLoader({
+      ...tilesConfig,
+      tileUrlPattern: options.tileUrlPattern,
+      getTileUrlHook: options.getTileUrlHook,
+      canvasElement: options.canvasElement,
+      loadTileImageHook: options.loadTileImageHook
+    });
+    return loader;
+  } else {
+    const loader = await new TilesLoader({
+      ...tilesConfig,
+      tileUrlPattern: options.tileUrlPattern,
+      getTileUrlHook: options.getTileUrlHook,
+      canvasElement: options.canvasElement,
+      loadTileImageHook: options.loadTileImageHook
+    });
+    return loader;
+  }
 }
 
 export { TilesLoader };
