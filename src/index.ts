@@ -9,7 +9,7 @@ export type CanvasType = 'raw' | 'fabric';
 export interface ITilesConfigOption {
   // 瓦片xml配置文件的url
   tilesConfigUrl: string;
-  canvasType: CanvasType;
+  canvasType?: CanvasType;
 }
 
 export type SimpleTilesLoaderOption = Pick<
