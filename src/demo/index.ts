@@ -27,11 +27,13 @@ import { loadImage } from '../utils/img';
   });
 
   let zoom = 1 / 64;
+  // fabricCanvas.zoomToPoint({ x: 100, y: 100 }, zoom);
   loader.setZoom(zoom);
   loader.render();
 
   // @ts-ignore
   window.render = (zoom: number) => {
+    // fabricCanvas.zoomToPoint({ x: 100, y: 100 }, zoom);
     loader.setZoom(zoom);
     loader.render();
   };
@@ -59,6 +61,7 @@ import { loadImage } from '../utils/img';
     } else if (e.key === 'ArrowDown') {
       zoom -= 0.001;
     }
+    // fabricCanvas.zoomToPoint({ x: 100, y: 100 }, zoom);
     loader.setZoom(zoom);
     loader.render();
   });
