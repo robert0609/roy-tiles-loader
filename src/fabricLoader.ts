@@ -17,6 +17,8 @@ export class FabricTilesLoader {
 
   // 当前瓦片底图的缩放级别，默认是1，表示无缩放变换
   private _zoom = 1;
+  // 当前已经渲染到fabric画布上的瓦片图片实例
+  private _currentRenderedImgs: fabric.Image[] = [];
 
   /**
    * 可视范围宽度
@@ -187,13 +189,15 @@ export class FabricTilesLoader {
       }
 
       const imgs = await Promise.all(imgLoadPromises);
-      this._canvas.clear();
+      // 先清除上一次渲染的所有瓦片
+      this.clear();
       for (const img of imgs) {
         this._canvas.add(img);
       }
+      this._currentRenderedImgs = imgs;
     } else {
       // 此时不渲染任何瓦片
-      this._canvas.clear();
+      this.clear();
     }
   }
 
@@ -232,5 +236,10 @@ export class FabricTilesLoader {
     const coords = this._canvas.vptCoords!;
     // 返回左上和右下两个点坐标
     return { tlPointView: coords.tl, brPointView: coords.br };
+  }
+
+  clear() {
+    this._canvas.remove(...this._currentRenderedImgs);
+    this._currentRenderedImgs = [];
   }
 }
