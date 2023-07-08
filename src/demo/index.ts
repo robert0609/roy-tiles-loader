@@ -10,7 +10,7 @@ import { loadImage } from '../utils/img';
   const canvasElement = document.getElementById(
     'demoCanvas'
   ) as HTMLCanvasElement;
-  const fabricCanvas = new fabric.StaticCanvas(canvasElement, {
+  const fabricCanvas = new fabric.Canvas(canvasElement, {
     width: canvasElement.clientWidth,
     height: canvasElement.clientHeight,
     backgroundColor: '#808080'
@@ -26,7 +26,7 @@ import { loadImage } from '../utils/img';
     }
   });
 
-  let zoom = 1 / 64;
+  let zoom = 1;
   // fabricCanvas.zoomToPoint({ x: 100, y: 100 }, zoom);
   loader.setZoom(zoom);
   loader.render();
@@ -57,12 +57,41 @@ import { loadImage } from '../utils/img';
 
   document.addEventListener('keyup', (e) => {
     if (e.key === 'ArrowUp') {
-      zoom += 0.001;
+      zoom += 0.1;
     } else if (e.key === 'ArrowDown') {
-      zoom -= 0.001;
+      zoom -= 0.1;
     }
     // fabricCanvas.zoomToPoint({ x: 100, y: 100 }, zoom);
     loader.setZoom(zoom);
     loader.render();
+  });
+
+  fabricCanvas.on('mouse:wheel', (opt) => {
+    const evt = opt.e;
+    if (!evt.shiftKey && !evt.ctrlKey && !evt.altKey) {
+      // zoom
+      const delta = opt.e.deltaY;
+      let zoom = fabricCanvas.getZoom();
+      zoom *= 0.999 ** delta;
+      if (zoom > 50) zoom = 50;
+      if (zoom < 0.05) zoom = 0.05;
+      fabricCanvas.setZoom(zoom);
+      // fabricCanvas.zoomToPoint({ x: evt.offsetX, y: evt.offsetY }, zoom)
+      console.log(
+        '@@@',
+        delta,
+        evt.offsetX,
+        evt.offsetY,
+        zoom,
+        fabricCanvas.vptCoords!.tl,
+        fabricCanvas.vptCoords!.br
+      );
+
+      loader.setZoom(zoom);
+      loader.render();
+
+      evt.preventDefault();
+      evt.stopPropagation();
+    }
   });
 })();

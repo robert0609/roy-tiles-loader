@@ -54,6 +54,6 @@ export async function getTilesLoaderByXmlConfig(
   }
 }
 
-export { TilesLoader };
+export { TilesLoader, FabricTilesLoader };
 export type { ITilesConfig } from './config';
 export type { ITile, ITilesLoaderOption, LoadTileImage } from './loader';

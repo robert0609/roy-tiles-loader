@@ -122,10 +122,16 @@ export class FabricTilesLoader {
       this._xTilesCount = xTilesCount;
       this._yTilesCount = yTilesCount;
 
-      this._fullImageWidth = this.options.tileWidth * this._xTilesCount;
-      this._fullImageHeight = this.options.tileHeight * this._yTilesCount;
+      this._fullImageWidth =
+        this.options.tileWidth *
+        this._xTilesCount *
+        this._currentTileSet.unitsPerPixel;
+      this._fullImageHeight =
+        this.options.tileHeight *
+        this._yTilesCount *
+        this._currentTileSet.unitsPerPixel;
 
-      // console.log('switch to new tileSet, tileZ: ', this._currentTileSet.tileZ);
+      // console.log('switch to new tileSet, tileZ: ', this._currentTileSet.tileZ, this._xTilesCount, this._yTilesCount, this._fullImageWidth, this._fullImageHeight);
     } else {
       this._xTilesCount = 0;
       this._yTilesCount = 0;
@@ -136,22 +142,13 @@ export class FabricTilesLoader {
   }
 
   async render() {
-    // 获取当前设置的缩放级别
-    const zoom = this._zoom;
-    if (!!this._currentTileSet) {
-      // 将画布使用单位像素比做一下校准变换
-      const mtx = this._canvas.viewportTransform!;
-      mtx[0] = mtx[3] = this._currentTileSet.unitsPerPixel * this._zoom;
-      this._canvas.setViewportTransform(mtx);
-    }
-
     // 如果没有找到当前缩放级别所对应的瓦片数量，则该情况是没有生成对应这一级别的栅格瓦片，就不渲染
     if (
       this._currentTileSet === undefined ||
       this._xTilesCount === 0 ||
       this._yTilesCount === 0
     ) {
-      console.warn(`The tiles for zoom[${zoom}] are not found!`);
+      console.warn(`The tiles for zoom[${this._zoom}] are not found!`);
       return;
     }
     // 找到当前可视范围的区域
@@ -172,50 +169,19 @@ export class FabricTilesLoader {
       y: Math.min(brPointReal.y, brPointView.y)
     };
     if (tl.x < br.x && tl.y < br.y) {
-      // // 该分支是有重合部分的情况，即需要刷新渲染瓦片而不是清除画布
-      // // 因为存在瓦片底图与可视窗口部分重合的情况，因此需要清除在可视窗口内但不属于瓦片底图的那部分画布
-      // if (tlPointView.x < tl.x) {
-      //   this._cacheContext.clearRect(
-      //     tlPointView.x,
-      //     tlPointView.y,
-      //     tl.x - tlPointView.x,
-      //     brPointView.y - tlPointView.y
-      //   );
-      // }
-      // if (tlPointView.y < tl.y) {
-      //   this._cacheContext.clearRect(
-      //     tlPointView.x,
-      //     tlPointView.y,
-      //     brPointView.x - tlPointView.x,
-      //     tl.y - tlPointView.y
-      //   );
-      // }
-      // if (brPointView.x > br.x - this.options.tileWidth) {
-      //   this._cacheContext.clearRect(
-      //     br.x - this.options.tileWidth,
-      //     tlPointView.y,
-      //     brPointView.x - br.x + this.options.tileWidth,
-      //     brPointView.y - tlPointView.y
-      //   );
-      // }
-      // if (brPointView.y > br.y - this.options.tileHeight) {
-      //   this._cacheContext.clearRect(
-      //     tlPointView.x,
-      //     br.y - this.options.tileHeight,
-      //     brPointView.x - tlPointView.x,
-      //     brPointView.y - br.y + this.options.tileHeight
-      //   );
-      // }
-
+      const calibTileWidth =
+        this.options.tileWidth * this._currentTileSet.unitsPerPixel;
+      const calibTileHeight =
+        this.options.tileHeight * this._currentTileSet.unitsPerPixel;
       // 此时会重新渲染这个范围的底图，需要加载这个范围内的瓦片
-      const xStart = Math.floor(tl.x / this.options.tileWidth);
-      let xEnd = Math.floor(br.x / this.options.tileWidth);
-      if (br.x % this.options.tileWidth === 0) {
+      const xStart = Math.floor(tl.x / calibTileWidth);
+      let xEnd = Math.floor(br.x / calibTileWidth);
+      if (br.x % calibTileWidth === 0) {
         xEnd -= 1;
       }
-      const yStart = Math.floor(tl.y / this.options.tileHeight);
-      let yEnd = Math.floor(br.y / this.options.tileHeight);
-      if (br.y % this.options.tileHeight === 0) {
+      const yStart = Math.floor(tl.y / calibTileHeight);
+      let yEnd = Math.floor(br.y / calibTileHeight);
+      if (br.y % calibTileHeight === 0) {
         yEnd -= 1;
       }
 
@@ -256,10 +222,16 @@ export class FabricTilesLoader {
       throw new Error(`Failed to draw tile: tile img url is empty!`);
     }
     const img = (await loadImage([imgUrl], this.options.loadTileImageHook))[0];
+    const calibTileWidth =
+      this.options.tileWidth * this._currentTileSet!.unitsPerPixel;
+    const calibTileHeight =
+      this.options.tileHeight * this._currentTileSet!.unitsPerPixel;
     return new fabric.Image(img, {
       selectable: false,
-      left: x * this.options.tileWidth,
-      top: y * this.options.tileHeight
+      left: x * calibTileWidth,
+      top: y * calibTileHeight,
+      scaleX: this._currentTileSet!.unitsPerPixel,
+      scaleY: this._currentTileSet!.unitsPerPixel
     });
   }
 
