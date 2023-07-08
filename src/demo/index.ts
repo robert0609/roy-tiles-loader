@@ -75,8 +75,8 @@ import { loadImage } from '../utils/img';
       zoom *= 0.999 ** delta;
       if (zoom > 50) zoom = 50;
       if (zoom < 0.05) zoom = 0.05;
-      fabricCanvas.setZoom(zoom);
-      // fabricCanvas.zoomToPoint({ x: evt.offsetX, y: evt.offsetY }, zoom)
+      // fabricCanvas.setZoom(zoom);
+      fabricCanvas.zoomToPoint({ x: evt.offsetX, y: evt.offsetY }, zoom);
       console.log(
         '@@@',
         delta,

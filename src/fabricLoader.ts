@@ -48,13 +48,6 @@ export class FabricTilesLoader {
     }
   }
 
-  setTranslation(x: number, y: number) {
-    const mtx = this._canvas.viewportTransform!;
-    mtx[4] = x;
-    mtx[5] = y;
-    this._canvas.setViewportTransform(mtx);
-  }
-
   // 根据当前zoom确定所要使用的瓦片数据集
   private checkTileSet(zoom: number) {
     const currentUnitsPerPixel = 1 / zoom;
