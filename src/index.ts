@@ -13,7 +13,11 @@ export interface ITilesConfigOption {
 
 export type SimpleTilesLoaderOption = Pick<
   ITilesLoaderOption,
-  'tileUrlPattern' | 'getTileUrlHook' | 'canvasElement' | 'loadTileImageHook'
+  | 'tileUrlPattern'
+  | 'getTileUrlHook'
+  | 'canvasElement'
+  | 'loadTileImageHook'
+  | 'assistTileOpacity'
 > &
   ITilesConfigOption;
 
@@ -38,7 +42,8 @@ export async function getTilesLoaderByXmlConfig(
       tileUrlPattern: options.tileUrlPattern,
       getTileUrlHook: options.getTileUrlHook,
       canvasElement: options.canvasElement,
-      loadTileImageHook: options.loadTileImageHook
+      loadTileImageHook: options.loadTileImageHook,
+      assistTileOpacity: options.assistTileOpacity
     });
     return loader;
   } else {
@@ -47,7 +52,8 @@ export async function getTilesLoaderByXmlConfig(
       tileUrlPattern: options.tileUrlPattern,
       getTileUrlHook: options.getTileUrlHook,
       canvasElement: options.canvasElement,
-      loadTileImageHook: options.loadTileImageHook
+      loadTileImageHook: options.loadTileImageHook,
+      assistTileOpacity: options.assistTileOpacity
     });
     return loader;
   }

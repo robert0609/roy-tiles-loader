@@ -6,7 +6,7 @@ import {
 } from '../index';
 import { loadImage } from '../utils/img';
 
-let layer = 1;
+let layer = 2;
 
 (async function () {
   const canvasElement = document.getElementById(
@@ -32,7 +32,8 @@ let layer = 1;
     canvasElement: fabricCanvas,
     async loadTileImageHook(imgUrl: string) {
       return (await loadImage([imgUrl]))[0];
-    }
+    },
+    assistTileOpacity: 1
   });
 
   let zoom = 1;

@@ -211,6 +211,9 @@ export class FabricTilesLoader {
 
       // 将加载的所有瓦片都缓存一下，以备后面清除
       this._currentRenderedImgs.push(...mainImgs);
+      for (const gridImgs of assistImgs) {
+        this._currentRenderedImgs.push(...gridImgs);
+      }
     } else {
       // 此时不渲染任何瓦片
       this.clear();
