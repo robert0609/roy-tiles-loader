@@ -21,6 +21,11 @@ export class FabricTilesLoader {
   private _currentRenderedImgs: fabric.Image[] = [];
 
   /**
+   * 主瓦片是否显示，默认true
+   */
+  mainVisible = true;
+
+  /**
    * 可视范围宽度
    */
   get viewportWidth() {
@@ -189,30 +194,43 @@ export class FabricTilesLoader {
       const assistImgLoadPromises: Promise<fabric.Image[]>[] = [];
       for (let x = xStart; x <= xEnd; ++x) {
         for (let y = yStart; y <= yEnd; ++y) {
-          imgLoadPromises.push(
-            this.drawMainTile(this._currentTileSet.tileZ, x, y)
-          );
+          if (this.mainVisible === true) {
+            imgLoadPromises.push(
+              this.drawMainTile(this._currentTileSet.tileZ, x, y)
+            );
+          }
           assistImgLoadPromises.push(
             this.drawAssistTile(this._currentTileSet.tileZ, x, y)
           );
         }
       }
 
-      // 只要主瓦片加载完成之后，就进行刷新渲染，无需等副瓦片加载完
-      const mainImgs = await Promise.all(imgLoadPromises);
-      // 先清除上一次渲染的所有瓦片
-      this.clear();
-      this._canvas.add(...mainImgs);
-      // 等待所有副瓦片加载完
-      const assistImgs = await Promise.all(assistImgLoadPromises);
-      for (const gridImgs of assistImgs) {
-        this._canvas.add(...gridImgs);
-      }
+      if (imgLoadPromises.length > 0) {
+        // 只要主瓦片加载完成之后，就进行刷新渲染，无需等副瓦片加载完
+        const mainImgs = await Promise.all(imgLoadPromises);
+        // 先清除上一次渲染的所有瓦片
+        this.clear();
+        this._canvas.add(...mainImgs);
+        // 将加载的所有瓦片都缓存一下，以备后面清除
+        this._currentRenderedImgs.push(...mainImgs);
 
-      // 将加载的所有瓦片都缓存一下，以备后面清除
-      this._currentRenderedImgs.push(...mainImgs);
-      for (const gridImgs of assistImgs) {
-        this._currentRenderedImgs.push(...gridImgs);
+        // 等待所有副瓦片加载完
+        const assistImgs = await Promise.all(assistImgLoadPromises);
+        for (const gridImgs of assistImgs) {
+          this._canvas.add(...gridImgs);
+          // 将加载的所有瓦片都缓存一下，以备后面清除
+          this._currentRenderedImgs.push(...gridImgs);
+        }
+      } else {
+        // 等待所有副瓦片加载完
+        const assistImgs = await Promise.all(assistImgLoadPromises);
+        // 清除上一次渲染的所有瓦片
+        this.clear();
+        for (const gridImgs of assistImgs) {
+          this._canvas.add(...gridImgs);
+          // 将加载的所有瓦片都缓存一下，以备后面清除
+          this._currentRenderedImgs.push(...gridImgs);
+        }
       }
     } else {
       // 此时不渲染任何瓦片
@@ -273,6 +291,9 @@ export class FabricTilesLoader {
       throw new Error(
         `Failed to draw assist tile: getTileUrlHook must be set!`
       );
+    }
+    if (assistImgUrls.length === 0) {
+      return [];
     }
     const assistImgs = await loadImage(
       assistImgUrls,
