@@ -35,6 +35,10 @@ export class FabricTilesLoader {
   }
 
   constructor(private options: ITilesLoaderOption) {
+    // 设置一些选项的默认值
+    if (options.assistTileOpacity === undefined) {
+      options.assistTileOpacity = 0.5;
+    }
     this._canvas = options.canvasElement as fabric.StaticCanvas;
     this._tileSet = [...this.options.tileSet].sort(
       (a, b) => a.unitsPerPixel - b.unitsPerPixel
@@ -182,31 +186,50 @@ export class FabricTilesLoader {
 
       // 根据找到的x和y方向上的索引范围，找到所需要加载的瓦片地址
       const imgLoadPromises: Promise<fabric.Image>[] = [];
+      const assistImgLoadPromises: Promise<fabric.Image[]>[] = [];
       for (let x = xStart; x <= xEnd; ++x) {
         for (let y = yStart; y <= yEnd; ++y) {
-          imgLoadPromises.push(this.drawTile(this._currentTileSet.tileZ, x, y));
+          imgLoadPromises.push(
+            this.drawMainTile(this._currentTileSet.tileZ, x, y)
+          );
+          assistImgLoadPromises.push(
+            this.drawAssistTile(this._currentTileSet.tileZ, x, y)
+          );
         }
       }
 
-      const imgs = await Promise.all(imgLoadPromises);
+      // 只要主瓦片加载完成之后，就进行刷新渲染，无需等副瓦片加载完
+      const mainImgs = await Promise.all(imgLoadPromises);
       // 先清除上一次渲染的所有瓦片
       this.clear();
-      for (const img of imgs) {
-        this._canvas.add(img);
+      this._canvas.add(...mainImgs);
+      // 等待所有副瓦片加载完
+      const assistImgs = await Promise.all(assistImgLoadPromises);
+      for (const gridImgs of assistImgs) {
+        this._canvas.add(...gridImgs);
       }
-      this._currentRenderedImgs = imgs;
+
+      // 将加载的所有瓦片都缓存一下，以备后面清除
+      this._currentRenderedImgs.push(...mainImgs);
     } else {
       // 此时不渲染任何瓦片
       this.clear();
     }
   }
 
-  private async drawTile(z: number, x: number, y: number) {
-    let imgUrl: string;
+  private async drawMainTile(z: number, x: number, y: number) {
+    let mainImgUrl: string | undefined;
     if (!!this.options.getTileUrlHook) {
-      imgUrl = this.options.getTileUrlHook(z, x, y);
+      const tileUrls = this.options.getTileUrlHook(z, x, y);
+      if (Array.isArray(tileUrls)) {
+        if (tileUrls.length > 0) {
+          mainImgUrl = tileUrls[0];
+        }
+      } else {
+        mainImgUrl = tileUrls;
+      }
     } else if (!!this.options.tileUrlPattern) {
-      imgUrl = this.options.tileUrlPattern
+      mainImgUrl = this.options.tileUrlPattern
         .replace('{z}', z.toString())
         .replace('{x}', x.toString())
         .replace('{y}', y.toString());
@@ -215,10 +238,12 @@ export class FabricTilesLoader {
         `Failed to draw tile: getTileUrlHook or tileUrlPattern must be set one at least!`
       );
     }
-    if (!imgUrl) {
+    if (!mainImgUrl) {
       throw new Error(`Failed to draw tile: tile img url is empty!`);
     }
-    const img = (await loadImage([imgUrl], this.options.loadTileImageHook))[0];
+    const img = (
+      await loadImage([mainImgUrl], this.options.loadTileImageHook)
+    )[0];
     const calibTileWidth =
       this.options.tileWidth * this._currentTileSet!.unitsPerPixel;
     const calibTileHeight =
@@ -230,6 +255,41 @@ export class FabricTilesLoader {
       scaleX: this._currentTileSet!.unitsPerPixel,
       scaleY: this._currentTileSet!.unitsPerPixel
     });
+  }
+
+  private async drawAssistTile(z: number, x: number, y: number) {
+    let assistImgUrls: string[] = [];
+    if (!!this.options.getTileUrlHook) {
+      const tileUrls = this.options.getTileUrlHook(z, x, y);
+      if (Array.isArray(tileUrls)) {
+        if (tileUrls.length > 1) {
+          assistImgUrls = tileUrls.slice(1);
+        }
+      }
+    } else {
+      throw new Error(
+        `Failed to draw assist tile: getTileUrlHook must be set!`
+      );
+    }
+    const assistImgs = await loadImage(
+      assistImgUrls,
+      this.options.loadTileImageHook
+    );
+    const calibTileWidth =
+      this.options.tileWidth * this._currentTileSet!.unitsPerPixel;
+    const calibTileHeight =
+      this.options.tileHeight * this._currentTileSet!.unitsPerPixel;
+    return assistImgs.map(
+      (img) =>
+        new fabric.Image(img, {
+          selectable: false,
+          left: x * calibTileWidth,
+          top: y * calibTileHeight,
+          scaleX: this._currentTileSet!.unitsPerPixel,
+          scaleY: this._currentTileSet!.unitsPerPixel,
+          opacity: this.options.assistTileOpacity
+        })
+    );
   }
 
   private getViewportArea() {

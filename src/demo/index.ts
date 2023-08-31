@@ -6,6 +6,8 @@ import {
 } from '../index';
 import { loadImage } from '../utils/img';
 
+let layer = 1;
+
 (async function () {
   const canvasElement = document.getElementById(
     'demoCanvas'
@@ -18,7 +20,14 @@ import { loadImage } from '../utils/img';
 
   const loader = await getTilesLoaderByXmlConfig({
     tilesConfigUrl: 'src/demo/tiles/tilemapresource.xml',
-    tileUrlPattern: './src/demo/tiles/{z}/{x}/{y}.png',
+    // tileUrlPattern: './src/demo/tiles/{z}/{x}/{y}.png',
+    getTileUrlHook(z, x, y) {
+      return [
+        `./src/demo/tiles/${z}/${x}/${y}.png`,
+        `./src/demo/tiles/${z}/${x}/${y}.png`,
+        `./src/demo/tiles/${z}/${x}/${y}.png`
+      ].slice(0, layer);
+    },
     canvasType: 'fabric',
     canvasElement: fabricCanvas,
     async loadTileImageHook(imgUrl: string) {
@@ -35,6 +44,12 @@ import { loadImage } from '../utils/img';
   window.render = (zoom: number) => {
     // fabricCanvas.zoomToPoint({ x: 100, y: 100 }, zoom);
     loader.setZoom(zoom);
+    loader.render();
+  };
+
+  //@ts-ignore
+  window.setLayer = (n: number) => {
+    layer = n;
     loader.render();
   };
 
@@ -77,15 +92,6 @@ import { loadImage } from '../utils/img';
       if (zoom < 0.05) zoom = 0.05;
       // fabricCanvas.setZoom(zoom);
       fabricCanvas.zoomToPoint({ x: evt.offsetX, y: evt.offsetY }, zoom);
-      console.log(
-        '@@@',
-        delta,
-        evt.offsetX,
-        evt.offsetY,
-        zoom,
-        fabricCanvas.vptCoords!.tl,
-        fabricCanvas.vptCoords!.br
-      );
 
       loader.setZoom(zoom);
       loader.render();

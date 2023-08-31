@@ -1,7 +1,6 @@
 import { TilesLoader } from './loader';
 import { getConfig } from './config';
 import type { ITilesLoaderOption } from './loader';
-import { type } from 'os';
 import { FabricTilesLoader } from './fabricLoader';
 
 export type CanvasType = 'raw' | 'fabric';

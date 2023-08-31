@@ -22,13 +22,15 @@ export interface ITilesLoaderOption {
   // 栅格瓦片url的格式，形如：https://img.xxx.com/xxxx/xxxx/{z}/{x}/{y}.png
   tileUrlPattern?: string;
   // 生成瓦片url的钩子方法,tileUrlPattern和getTileUrlHook必须至少设置一个
-  getTileUrlHook?: (z: number, x: number, y: number) => string;
+  getTileUrlHook?: (z: number, x: number, y: number) => string | string[];
   // 栅格瓦片数据集
   tileSet: ITile[];
   // 渲染目标画布
   canvasElement: HTMLCanvasElement | fabric.StaticCanvas;
   // 加载栅格瓦片的钩子，如果设置了，会取代默认的加载图片的方法
   loadTileImageHook?: LoadTileImage;
+  // 副瓦片渲染的透明度，默认0.5
+  assistTileOpacity?: number;
 }
 
 export class TilesLoader {
@@ -65,6 +67,10 @@ export class TilesLoader {
   }
 
   constructor(private options: ITilesLoaderOption) {
+    // 设置一些选项的默认值
+    if (options.assistTileOpacity === undefined) {
+      options.assistTileOpacity = 0.5;
+    }
     this._canvas = options.canvasElement as HTMLCanvasElement;
     this._tileSet = [...this.options.tileSet].sort(
       (a, b) => a.unitsPerPixel - b.unitsPerPixel
@@ -285,7 +291,13 @@ export class TilesLoader {
   private async drawTile(z: number, x: number, y: number) {
     let imgUrl: string;
     if (!!this.options.getTileUrlHook) {
-      imgUrl = this.options.getTileUrlHook(z, x, y);
+      const tileUrls = this.options.getTileUrlHook(z, x, y);
+      if (Array.isArray(tileUrls)) {
+        // TODO: 普通canvas瓦片加载器暂不支持多瓦片叠加
+        imgUrl = tileUrls[0];
+      } else {
+        imgUrl = tileUrls;
+      }
     } else if (!!this.options.tileUrlPattern) {
       imgUrl = this.options.tileUrlPattern
         .replace('{z}', z.toString())
