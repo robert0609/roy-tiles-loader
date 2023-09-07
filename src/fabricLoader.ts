@@ -323,6 +323,7 @@ export class FabricTilesLoader {
   }
 
   clear() {
+    this.mainVisible = false;
     this._canvas.remove(...this._currentRenderedImgs);
     this._currentRenderedImgs = [];
   }
